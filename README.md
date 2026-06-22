@@ -1,19 +1,45 @@
 # 📰 TiKAMBE Newspaper Article Extraction
 
-Extracts individual news articles from scanned PDF editions of **TiKAMBE**, a Malawi newspaper written in Chichewa. Each page is sent to Claude as an image, and every article is saved as its own Markdown file — ready for search indexing, RAG pipelines, or fine-tuning datasets.
+Two Jupyter notebooks for extracting text from scanned PDF editions of **TiKAMBE**, a Malawi newspaper written in Chichewa.
+
+| Notebook | What it does | Requires API key? |
+|----------|-------------|-------------------|
+| `pdf_text_extraction.ipynb` | Extracts all text from the PDF into a single `.txt` file | No |
+| `article_extraction_jupyter.ipynb` | Uses Claude to split content into individual articles, each saved as its own `.md` file | Yes |
+
+**Start with the text extraction notebook** to see the raw content, then run the Claude notebook to see what structured article extraction looks like on top of it.
 
 ---
 
-## What this does
+## Notebooks
 
-1. Opens a scanned newspaper PDF
-2. Renders each page as a JPEG image
-3. Sends the image to Claude with a detailed extraction prompt
-4. Parses Claude's response (a JSON array of articles)
-5. Saves each article as a numbered `.md` file
+### 1. `pdf_text_extraction.ipynb` — Full text extraction
+
+Extracts everything PyMuPDF can read from the PDF and saves it as one `.txt` file, with a `=== Page N ===` header before each page. No AI, no splitting, no API key needed.
+
+**Example output (`tikambe_march2025.txt`):**
+```
+=== Page 1 ===
+
+Mtsogoleri Akambira za Nthaka
+Chisomo Banda
+Boma la Malawi lakhulupirira kuti...
+
+=== Page 2 ===
+
+Aphunzitsi Akanena za Maphunziro
+...
+```
+
+If any pages come back empty (common with older scans that have no embedded text layer), the notebook tells you which pages and explains how to switch to OCR.
+
+---
+
+### 2. `article_extraction_jupyter.ipynb` — Claude article extraction
+
+Sends each page to Claude as an image and asks it to identify and extract every article. Each article is saved as its own numbered `.md` file, with headline, byline, topic domain, and body text.
 
 **Example output:**
-
 ```
 articles_output/
 ├── 01_Mtsogoleri Akambira za Nthaka.md
@@ -36,76 +62,77 @@ Each file looks like this:
 Article body text here...
 ```
 
+Claude also skips non-article content automatically: ads, page numbers, staff credits, section banners, photo captions, and English-only pages.
+
 ---
 
 ## Quickstart — GitHub Codespaces (recommended for training)
 
-The easiest way to run this notebook is in a GitHub Codespace. Everything is pre-installed — no local setup needed.
+The easiest way to run these notebooks is in a GitHub Codespace. Everything — Python, Jupyter, all packages, and the OCR engine — is pre-installed automatically. No local setup needed.
 
 ### Step 1 — Open a Codespace
 
 1. Go to the repository on GitHub
 2. Click the green **Code** button → **Codespaces** tab → **Create codespace on main**
-3. Wait about 60 seconds for the environment to build
-4. A browser-based VS Code opens with Python, Jupyter, and all dependencies ready
+3. Wait about 60–90 seconds for the environment to build
+4. A browser-based VS Code opens, ready to go
 
-### Step 2 — Add your API key
+### Step 2 — Add your Anthropic API key
 
-Your Anthropic API key should be stored as a **Codespaces secret**, not pasted into the notebook.
+Only needed for `article_extraction_jupyter.ipynb`. Store it as a **Codespaces secret** — never paste keys into notebooks.
 
 1. Go to [github.com/settings/codespaces](https://github.com/settings/codespaces)
 2. Under **Secrets**, click **New secret**
 3. Name: `ANTHROPIC_API_KEY` — Value: your key
 4. Under **Repository access**, add this repository
-5. The key will be available automatically the next time you open a Codespace
+5. The key appears automatically as an environment variable in any Codespace you open
 
-> If you've already opened a Codespace before adding the secret, rebuild it: **Ctrl+Shift+P** → `Codespaces: Rebuild Container`.
+> If you added the secret after opening your Codespace, rebuild it: **Ctrl+Shift+P** → `Codespaces: Rebuild Container`.
 
 ### Step 3 — Add your PDF
 
 Drag and drop your newspaper PDF into the file explorer panel on the left. Note the filename.
 
-### Step 4 — Run the notebook
+### Step 4 — Run a notebook
 
+**Text extraction (no API key needed):**
+1. Open `pdf_text_extraction.ipynb`
+2. In Cell 1, set `PDF_PATH` to your PDF filename
+3. Click **Run All**
+
+**Claude article extraction:**
 1. Open `article_extraction_jupyter.ipynb`
-2. In **Cell 1**, set `PDF_PATH` to your PDF filename (e.g. `"tikambe_march2025.pdf"`)
-3. Leave `API_KEY = ""` — it will pick up your Codespaces secret automatically
-4. Click **Run All** (or run cells one at a time from top to bottom)
+2. In Cell 1, set `PDF_PATH` to your PDF filename and leave `API_KEY = ""`
+3. Click **Run All**
 
 ---
 
 ## Local setup (alternative)
 
-If you prefer to run locally:
-
 ```bash
-# Install dependencies
-pip install anthropic pymupdf jupyter
+# Install system dependency for OCR
+sudo apt-get install -y tesseract-ocr   # Linux
+# brew install tesseract                # macOS
+
+# Install Python packages
+pip install anthropic pymupdf pytesseract pillow jupyter
 
 # Launch Jupyter
 jupyter notebook
 ```
 
-Then open `article_extraction_jupyter.ipynb`, set `PDF_PATH` and `API_KEY` in Cell 1, and run all cells.
-
----
-
-## Notebook structure
-
-The notebook has four code cells, each preceded by a markdown cell explaining what it does.
-
-| Cell | Purpose |
-|------|---------|
-| **Cell 1 — Configuration** | Set PDF path, output folder, API key, model, token limit |
-| **Cell 2 — Prompt** | The instructions sent to Claude for each page |
-| **Cell 3 — Claude client** | API call, retry logic, JSON parsing and repair |
-| **Cell 4 — Main pipeline** | Page rendering loop, article saving |
-
 ---
 
 ## Configuration reference
 
-All settings are in **Cell 1**:
+### `pdf_text_extraction.ipynb` (Cell 1)
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `PDF_PATH` | `"your_newspaper.pdf"` | Path to the input PDF |
+| `OUTPUT_FILE` | `""` | Output `.txt` filename. Leave blank to auto-name from the PDF |
+
+### `article_extraction_jupyter.ipynb` (Cell 1)
 
 | Variable | Default | Description |
 |----------|---------|-------------|
@@ -125,20 +152,16 @@ For each article on a page, Claude returns:
 |-------|-------------|
 | `headline` | Article headline |
 | `byline` | Author name, or `null` if not present |
-| `domain` | Topic category — one of: Politics, Health, Education, Agriculture, Sports, Crime, Community, Economy, Religion, Entertainment, Opinion, Obituary, Other |
+| `domain` | Topic category — Politics, Health, Education, Agriculture, Sports, Crime, Community, Economy, Religion, Entertainment, Opinion, Obituary, or Other |
 | `body` | Full article text with paragraph breaks |
-
-**Claude skips:** ads, page numbers, staff credits, section banners, photo captions, pull quotes, continuation lines, contact info, and blank or English-only pages.
 
 ---
 
-## Error handling
-
-The pipeline is designed to keep running even when individual pages fail:
+## Error handling (Claude notebook)
 
 - Each page is retried up to **3 times** before being skipped
-- JSON parse errors (often caused by quotes inside article text) trigger an automatic repair attempt before retrying
-- If Claude hits the token limit (`stop_reason: max_tokens`), the page is skipped immediately — retrying won't help, but increasing `MAX_TOKENS` in Cell 1 will
+- JSON parse errors trigger an automatic repair attempt before retrying
+- If Claude hits the token limit (`stop_reason: max_tokens`), increase `MAX_TOKENS` in Cell 1
 - Failed page numbers are listed in the summary at the end of the run
 
 ---
@@ -148,11 +171,13 @@ The pipeline is designed to keep running even when individual pages fail:
 | Requirement | Detail |
 |-------------|--------|
 | Python | 3.9 or later |
-| `anthropic` | Anthropic Python SDK |
-| `pymupdf` | PDF rendering (imported as `fitz`) |
-| Anthropic API key | Get one at [console.anthropic.com](https://console.anthropic.com) |
+| `pymupdf` | PDF reading and page rendering (both notebooks) |
+| `anthropic` | Anthropic Python SDK (Claude notebook only) |
+| `pytesseract` + `pillow` | OCR fallback for image-only PDFs (optional) |
+| `tesseract-ocr` | System-level OCR engine required by `pytesseract` |
+| Anthropic API key | Claude notebook only — get one at [console.anthropic.com](https://console.anthropic.com) |
 
-If using Codespaces, these are all installed automatically via `.devcontainer/devcontainer.json`.
+All of the above are installed automatically when using Codespaces.
 
 ---
 
@@ -160,7 +185,8 @@ If using Codespaces, these are all installed automatically via `.devcontainer/de
 
 ```
 .
-├── article_extraction_jupyter.ipynb   # Main notebook
+├── pdf_text_extraction.ipynb          # Simple full-text extraction, no API key
+├── article_extraction_jupyter.ipynb   # Claude-powered article extraction
 ├── .devcontainer/
 │   └── devcontainer.json              # Codespaces environment config
 └── README.md                          # This file
@@ -170,4 +196,4 @@ If using Codespaces, these are all installed automatically via `.devcontainer/de
 
 ## Background
 
-This pipeline was originally built for the Databricks platform using Azure Data Lake Storage. This version is adapted for a single-PDF, standard Jupyter workflow — no cloud storage, no Spark, no Databricks endpoint required. The extraction prompt and retry logic are identical to the Databricks version.
+The Claude extraction pipeline was originally built for the Databricks platform using Azure Data Lake Storage. These notebooks are adapted for a single-PDF, standard Jupyter workflow — no cloud storage, no Spark, no Databricks endpoint required. The extraction prompt and retry logic are identical to the Databricks version.
