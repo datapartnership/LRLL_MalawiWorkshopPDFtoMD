@@ -1,7 +1,7 @@
 {
   "name": "Newspaper Article Extraction",
   "image": "mcr.microsoft.com/devcontainers/python:3.11",
-  "postCreateCommand": "pip install anthropic pymupdf jupyter",
+  "postCreateCommand": "sudo apt-get install -y tesseract-ocr && pip install anthropic pymupdf pytesseract pillow jupyter",
   "customizations": {
     "vscode": {
       "extensions": [
