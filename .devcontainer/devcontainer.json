@@ -5,7 +5,7 @@
     "cpus": 4,
     "memory": "16gb"
   },
-  "postCreateCommand": "sudo apt-get update && sudo apt-get install -y tesseract-ocr && pip install anthropic pymupdf pytesseract pillow jupyter transformers 'datasets==2.16.1' torch seqeval accelerate",
+  "postCreateCommand": "sudo apt-get update && sudo apt-get install -y tesseract-ocr && pip install anthropic pymupdf pytesseract pillow jupyter 'datasets==2.16.1' 'accelerate>=1.1.0' transformers torch seqeval ipykernel",
   "customizations": {
     "vscode": {
       "extensions": [
