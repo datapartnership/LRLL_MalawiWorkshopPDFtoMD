@@ -1,11 +1,11 @@
 {
-  "name": "Newspaper Article Extraction",
+  "name": "Malawi NLP Workshop",
   "image": "mcr.microsoft.com/devcontainers/python:3.11",
   "hostRequirements": {
     "cpus": 4,
     "memory": "16gb"
   },
-  "postCreateCommand": "sudo apt-get update && sudo apt-get install -y tesseract-ocr && pip install anthropic pymupdf pytesseract pillow jupyter 'datasets==2.16.1' 'accelerate>=1.1.0' transformers torch seqeval ipykernel",
+  "postCreateCommand": "sudo apt-get update && sudo apt-get install -y tesseract-ocr ffmpeg && pip install anthropic pymupdf pytesseract pillow jupyter transformers 'datasets==2.16.1' torch torchaudio seqeval accelerate librosa soundfile jiwer evaluate ipykernel huggingface_hub",
   "customizations": {
     "vscode": {
       "extensions": [
@@ -20,6 +20,10 @@
     "ANTHROPIC_API_KEY": {
       "description": "Your Anthropic API key. Get one at https://console.anthropic.com",
       "documentationUrl": "https://console.anthropic.com"
+    },
+    "HF_TOKEN": {
+      "description": "Your HuggingFace token for Common Voice download. Get one at https://huggingface.co/settings/tokens",
+      "documentationUrl": "https://huggingface.co/settings/tokens"
     }
   }
 }
