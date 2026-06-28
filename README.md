@@ -1,121 +1,76 @@
-# 📰 TiKAMBE Newspaper Article Extraction
-
-Two Jupyter notebooks for extracting text from scanned PDF editions of **TiKAMBE**, a Malawi newspaper written in Chichewa.
-
-| Notebook | What it does | Requires API key? |
-|----------|-------------|-------------------|
-| `pdf_text_extraction.ipynb` | Extracts all text from the PDF into a single `.txt` file | No |
-| `article_extraction_jupyter.ipynb` | Uses Claude to split content into individual articles, each saved as its own `.md` file | Yes |
-
-**Start with the text extraction notebook** to see the raw content, then run the Claude notebook to see what structured article extraction looks like on top of it.
+The full pipeline: **record speech → ASR transcribes → NER finds entities** — a complete spoken-language understanding system in Chichewa.
 
 ---
 
-## Notebooks
+## Quickstart — GitHub Codespaces
 
-### 1. `pdf_text_extraction.ipynb` — Full text extraction
-
-Extracts everything PyMuPDF can read from the PDF and saves it as one `.txt` file, with a `=== Page N ===` header before each page. No AI, no splitting, no API key needed.
-
-**Example output (`tikambe_march2025.txt`):**
-```
-=== Page 1 ===
-
-Mtsogoleri Akambira za Nthaka
-Chisomo Banda
-Boma la Malawi lakhulupirira kuti...
-
-=== Page 2 ===
-
-Aphunzitsi Akanena za Maphunziro
-...
-```
-
-If any pages come back empty (common with older scans that have no embedded text layer), the notebook tells you which pages and explains how to switch to OCR.
-
----
-
-### 2. `article_extraction_jupyter.ipynb` — Claude article extraction
-
-Sends each page to Claude as an image and asks it to identify and extract every article. Each article is saved as its own numbered `.md` file, with headline, byline, topic domain, and body text.
-
-**Example output:**
-```
-articles_output/
-├── 01_Mtsogoleri Akambira za Nthaka.md
-├── 02_Aphunzitsi Akanena za Maphunziro.md
-├── 03_Timu ya Bullets Yapambana.md
-└── ...
-```
-
-Each file looks like this:
-
-```markdown
-# Mtsogoleri Akambira za Nthaka
-
-**By Chisomo Banda**
-**Domain:** Politics
-**Page:** 3
-
----
-
-Article body text here...
-```
-
-Claude also skips non-article content automatically: ads, page numbers, staff credits, section banners, photo captions, and English-only pages.
-
----
-
-## Quickstart — GitHub Codespaces (recommended for training)
-
-The easiest way to run these notebooks is in a GitHub Codespace. Everything — Python, Jupyter, all packages, and the OCR engine — is pre-installed automatically. No local setup needed.
+Everything is pre-installed. No local setup needed.
 
 ### Step 1 — Open a Codespace
 
-1. Go to the repository on GitHub
-2. Click the green **Code** button → **Codespaces** tab → **Create codespace on main**
-3. Wait about 60–90 seconds for the environment to build
-4. A browser-based VS Code opens, ready to go
+1. Go to this repository on GitHub
+2. Click the green **Code** button → **Codespaces** tab → **New with options**
+3. Select **4-core · 16GB RAM · 32GB** under Machine type — required for NER and ASR training
+4. You will be prompted for secrets (see Step 2)
+5. Wait 60–90 seconds for the environment to build
 
-### Step 2 — Add your Anthropic API key
+### Step 2 — Add your secrets
 
-Only needed for `article_extraction_jupyter.ipynb`. Store it as a **Codespaces secret** — never paste keys into notebooks.
+When prompted during Codespace creation, enter:
 
-1. Go to [github.com/settings/codespaces](https://github.com/settings/codespaces)
-2. Under **Secrets**, click **New secret**
-3. Name: `ANTHROPIC_API_KEY` — Value: your key
-4. Under **Repository access**, add this repository
-5. The key appears automatically as an environment variable in any Codespace you open
+| Secret | Required for | Where to get it |
+|--------|-------------|----------------|
+| `ANTHROPIC_API_KEY` | Session 1 (Claude notebook) | [console.anthropic.com](https://console.anthropic.com) |
+| `HF_TOKEN` | Session 3 (ASR notebook) | [huggingface.co/settings/tokens](https://huggingface.co/settings/tokens) — Read access |
 
-> If you added the secret after opening your Codespace, rebuild it: **Ctrl+Shift+P** → `Codespaces: Rebuild Container`.
+To add or update secrets later: [github.com/settings/codespaces](https://github.com/settings/codespaces)
 
-### Step 3 — Add your PDF
+### Step 3 — Verify the environment
 
-Drag and drop your newspaper PDF into the file explorer panel on the left. Note the filename.
+Open the terminal (`Ctrl + `` `) and run:
 
-### Step 4 — Run a notebook
+```bash
+python -c "import fitz, anthropic, pytesseract; print('Session 1 packages OK')"
+python -c "import transformers, datasets; print('Session 2 packages OK')"
+python -c "import torchaudio, librosa; print('Session 3 packages OK')"
+```
 
-**Text extraction (no API key needed):**
-1. Open `pdf_text_extraction.ipynb`
-2. In Cell 1, set `PDF_PATH` to your PDF filename
-3. Click **Run All**
+### Step 4 — Run the notebooks in order
 
-**Claude article extraction:**
-1. Open `article_extraction_jupyter.ipynb`
-2. In Cell 1, set `PDF_PATH` to your PDF filename and leave `API_KEY = ""`
-3. Click **Run All**
+1. Open `pdf_text_extraction.ipynb` → Run All
+2. Open `article_extraction_jupyter.ipynb` → Run All
+3. Open `chichewa_ner_finetuning.ipynb` → Run Cell 1 first (downloads data), then Run All
+4. Open `chichewa_asr_finetuning.ipynb` → Paste HF_TOKEN in Cell 1 → Run Cell 1 first, then Run All
 
 ---
 
-## Local setup (alternative)
+## Memory management
+
+NER and ASR training need at least 8GB free RAM. Before running Cell 4 in either notebook:
 
 ```bash
-# Install system dependency for OCR
-sudo apt-get install -y tesseract-ocr   # Linux
-# brew install tesseract                # macOS
+# Check available memory
+nproc && free -h   # should show 4 cores and ~15GB total
 
-# Install Python packages
-pip install anthropic pymupdf pytesseract pillow jupyter
+# Kill Pylance if memory is low (it uses 3-4GB)
+kill $(pgrep -f "pylance")
+```
+
+If training crashes, reduce `BATCH_SIZE` to 4 (NER) or 2 (ASR) in Cell 4.
+
+---
+
+## Local setup (alternative to Codespaces)
+
+```bash
+# System dependencies
+sudo apt-get update && sudo apt-get install -y tesseract-ocr ffmpeg
+
+# Python packages
+pip install anthropic pymupdf pytesseract pillow jupyter \
+    transformers "datasets==2.16.1" torch torchaudio \
+    seqeval "accelerate>=1.1.0" librosa soundfile \
+    jiwer evaluate ipykernel huggingface_hub
 
 # Launch Jupyter
 jupyter notebook
@@ -123,61 +78,20 @@ jupyter notebook
 
 ---
 
-## Configuration reference
+## Requirements summary
 
-### `pdf_text_extraction.ipynb` (Cell 1)
-
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `PDF_PATH` | `"your_newspaper.pdf"` | Path to the input PDF |
-| `OUTPUT_FILE` | `""` | Output `.txt` filename. Leave blank to auto-name from the PDF |
-
-### `article_extraction_jupyter.ipynb` (Cell 1)
-
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `PDF_PATH` | `"your_newspaper.pdf"` | Path to the input PDF |
-| `OUTPUT_FOLDER` | `"articles_output"` | Folder for output `.md` files (created automatically) |
-| `API_KEY` | `""` | Anthropic API key. Leave blank to use the `ANTHROPIC_API_KEY` environment variable |
-| `MODEL` | `"claude-sonnet-4-6"` | Claude model. Sonnet is a good balance of quality and speed |
-| `MAX_TOKENS` | `16000` | Max response length per page. Increase if you see `max_tokens` warnings |
-
----
-
-## What Claude extracts
-
-For each article on a page, Claude returns:
-
-| Field | Description |
-|-------|-------------|
-| `headline` | Article headline |
-| `byline` | Author name, or `null` if not present |
-| `domain` | Topic category — Politics, Health, Education, Agriculture, Sports, Crime, Community, Economy, Religion, Entertainment, Opinion, Obituary, or Other |
-| `body` | Full article text with paragraph breaks |
-
----
-
-## Error handling (Claude notebook)
-
-- Each page is retried up to **3 times** before being skipped
-- JSON parse errors trigger an automatic repair attempt before retrying
-- If Claude hits the token limit (`stop_reason: max_tokens`), increase `MAX_TOKENS` in Cell 1
-- Failed page numbers are listed in the summary at the end of the run
-
----
-
-## Requirements
-
-| Requirement | Detail |
-|-------------|--------|
-| Python | 3.9 or later |
-| `pymupdf` | PDF reading and page rendering (both notebooks) |
-| `anthropic` | Anthropic Python SDK (Claude notebook only) |
-| `pytesseract` + `pillow` | OCR fallback for image-only PDFs (optional) |
-| `tesseract-ocr` | System-level OCR engine required by `pytesseract` |
-| Anthropic API key | Claude notebook only — get one at [console.anthropic.com](https://console.anthropic.com) |
-
-All of the above are installed automatically when using Codespaces.
+| Package | Session | Purpose |
+|---------|---------|---------|
+| `pymupdf` | 1 | PDF reading and rendering |
+| `anthropic` | 1b | Claude API for article extraction |
+| `pytesseract`, `pillow` | 1 | OCR fallback for image-only PDFs |
+| `transformers` | 2, 3 | DistilmBERT and Whisper models |
+| `datasets==2.16.1` | 2, 3 | Masakhane and Common Voice datasets |
+| `torch`, `torchaudio` | 2, 3 | Deep learning framework |
+| `seqeval` | 2 | NER evaluation (F1, precision, recall) |
+| `librosa`, `soundfile` | 3 | Audio loading and processing |
+| `jiwer`, `evaluate` | 3 | Word Error Rate calculation |
+| `accelerate>=1.1.0` | 2, 3 | Required by HuggingFace Trainer |
 
 ---
 
@@ -185,15 +99,24 @@ All of the above are installed automatically when using Codespaces.
 
 ```
 .
-├── pdf_text_extraction.ipynb          # Simple full-text extraction, no API key
-├── article_extraction_jupyter.ipynb   # Claude-powered article extraction
+├── pdf_text_extraction.ipynb          # Session 1a — raw text extraction
+├── article_extraction_jupyter.ipynb   # Session 1b — Claude article extraction
+├── chichewa_ner_finetuning.ipynb      # Session 2 — NER fine-tuning
+├── chichewa_asr_finetuning.ipynb      # Session 3 — ASR fine-tuning
+├── TK1E2013_01_03_Page05.pdf          # Sample newspaper PDF
 ├── .devcontainer/
 │   └── devcontainer.json              # Codespaces environment config
+├── .vscode/
+│   └── settings.json                  # Disables Pylance to save memory
+├── .gitignore                         # Excludes model files and large data
 └── README.md                          # This file
 ```
-
 ---
 
 ## Background
 
-The Claude extraction pipeline was originally built for the Databricks platform using Azure Data Lake Storage. These notebooks are adapted for a single-PDF, standard Jupyter workflow — no cloud storage, no Spark, no Databricks endpoint required. The extraction prompt and retry logic are identical to the Databricks version.
+This workshop was developed for the **LRLL Malawi Workshop** to demonstrate practical NLP tools for Chichewa, one of Malawi's most widely spoken languages. The three sessions progress from text processing to NLP modelling to speech, and together form a complete low-resource language pipeline that can be adapted for other African languages by changing the dataset configuration.
+
+- **Session 1** was originally built for Databricks/Azure and adapted to standard Jupyter
+- **Session 2** uses the [Masakhane](https://masakhane.io) community NER dataset — a landmark effort to create NLP resources for African languages
+- **Session 3** uses [Mozilla Common Voice](https://commonvoice.mozilla.org) — a community-contributed speech dataset
