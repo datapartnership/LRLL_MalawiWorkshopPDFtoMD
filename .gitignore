@@ -2,3 +2,7 @@ ner_model/
 ner_data/
 tokenizer_cache/
 articles_output/
+whisper_processor/
+whisper_base/
+asr_data/
+asr_model/
