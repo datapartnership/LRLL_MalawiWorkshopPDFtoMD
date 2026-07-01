@@ -6,3 +6,6 @@ whisper_processor/
 whisper_base/
 asr_data/
 asr_model/
+asr_data/
+asr_model/
+whisper_base/
